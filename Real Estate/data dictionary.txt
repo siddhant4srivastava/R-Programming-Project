@@ -1,0 +1,19 @@
+Each row represnts characteristic of a single property . Many categorical data has 
+been coded to mask the data, you dont need to worry about their exact meaning 
+
+Suburb : categorical :: Which subsurb the property is located in 
+Address : categorical :: short address
+Rooms : numeric :: Number of Rooms
+Type : categorical :: type of the property
+Price : numeric :: This is the target variable, price of the property 
+Method : categorical :: method for selling 
+SellerG : categorical :: Name of the seller 
+Distance : numeric :: distance from the city center
+Postcode : categorical :: postcode of the property
+Bedroom2 : Numeric :: numbers of secondary bedrooms (this is different from rooms)
+Bathroom : numeric :: number of bathrooms
+Car : numeric :: number of parking spaces
+Landsize : numeric :: landsize
+BuildingArea : numeric :: buildup area
+YearBuilt : numeric :: year of building 
+CouncilArea : numeric :: council area to which the propery belongs
