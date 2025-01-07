@@ -1,84 +1,95 @@
+# Load required libraries
+
 library(dplyr)
 library(car)
+library(randomForest)
+library(rpart) # For decision tree
+if (!require(Metrics)) install.packages("Metrics", dependencies = TRUE)
+library(Metrics) # For evaluation metrics
+
+# Load data
 
 test = read.csv("D:\\PDFs\\Edvancer Eduventures\\Certified Business Analytics using R\\Projects\\Real Estate\\housing_test.csv")
 train = read.csv("D:\\PDFs\\Edvancer Eduventures\\Certified Business Analytics using R\\Projects\\Real Estate\\housing_train.csv")
 
+# Combine datasets for preprocessing
 
-head(train)
-test$Price= NA
-
+test$Price = NA
 train$data = 'train'
 test$data = 'test'
+all = rbind(train, test)
 
-all= rbind(train,test)
+# Convert Postcode to character
 
-glimpse(all)
-all$Postcode=as.character(all$Postcode)
+all$Postcode = as.character(all$Postcode)
 
-apply(all,2,function(x) length(unique(x)))
+# Create dummy variables function
 
-CreateDummies=function(data,var,freq_cutoff=100){
-  t=table(data[,var])
-  t=t[t>freq_cutoff]
-  t=sort(t)
-  categories=names(t)[-1]
+CreateDummies = function(data, var, freq_cutoff = 100) {
+  t = table(data[, var])
+  t = t[t > freq_cutoff]
+  categories = names(t)[-1]
   
-  for( cat in categories){
-    name=paste(var,cat,sep="_")
-    name=gsub(" ","",name)
-    name=gsub("-","_",name)
-    name=gsub("\\?","Q",name)
-    name=gsub("<","LT_",name)
-    name=gsub("\\+","",name)
-    name=gsub(">","GT_",name)
-    name=gsub("=","EQ_",name)
-    name=gsub(",","",name)
-    name=gsub("/","_",name)
-    data[,name]=as.numeric(data[,var]==cat)
+  for (cat in categories) {
+    name = paste(var, cat, sep = "_")
+    name = gsub("[^A-Za-z0-9_]", "_", name) # Sanitize variable names
+    data[, name] = as.numeric(data[, var] == cat)
   }
-  
-  data[,var]=NULL
+  data[, var] = NULL
   return(data)
-} 
-
-all=all %>% 
-  select(-SellerG,-Address,-Suburb)
-
-head(all)
-for_dummy_vars=c('Postcode','CouncilArea','Method','Type')
-
-for(var in for_dummy_vars){
-  all=CreateDummies(all,var,100)
 }
 
-for(col in names(all)){
-  
-  if(sum(is.na(all[,col]))>0 & !(col %in% c("data","Price"))){
-    
-    all[is.na(all[,col]),col]=mean(all[all$data=='train',col],na.rm=T)
+# Drop unnecessary columns
+
+all = all %>% select(-SellerG, -Address, -Suburb)
+
+# Create dummy variables
+
+for_dummy_vars = c('Postcode', 'CouncilArea', 'Method', 'Type')
+for (var in for_dummy_vars) {
+  all = CreateDummies(all, var, 100)
+}
+
+# Impute missing values with mean
+
+for (col in names(all)) {
+  if (sum(is.na(all[, col])) > 0 & !(col %in% c("data", "Price"))) {
+    all[is.na(all[, col]), col] = mean(all[all$data == 'train', col], na.rm = TRUE)
   }
-  
 }
 
-head(all)
+# Split data back into train and test
 
-# Impute the NA values with Mean in the dataset
+trainf = all %>% filter(data == 'train') %>% select(-data)
+testf = all %>% filter(data == 'test') %>% select(-Price, -data)
 
-trainf = all %>% filter(data == 'train') %>% select(-data) 
-testf= all %>% filter(data == 'test') %>% select(-Price, -data) 
+# Random Forest Model
 
-any(is.na(trainf))
-any(is.na(testf))
+rf_model = randomForest(Price ~ ., data = trainf)
+rf_train_preds = predict(rf_model, newdata = trainf)
 
-library(randomForest)
-fit = randomForest(Price ~ ., data = trainf) 
+# Decision Tree Model
 
-train.predictions = predict(fit, newdata = trainf)
+dt_model = rpart(Price ~ ., data = trainf, method = "anova")
+dt_train_preds = predict(dt_model, newdata = trainf)
 
-### Make predictions on test and submit 
+# Evaluation Metrics for Random Forest
 
-test.predictions = predict(fit, newdata = testf)
+rf_mae = Metrics::mae(trainf$Price, rf_train_preds)
+rf_r2 = cor(trainf$Price, rf_train_preds)^2
 
-write.csv(test.predictions,file = "submission.csv", row.names = F)
+# Evaluation Metrics for Decision Tree
 
+dt_mae = Metrics::mae(trainf$Price, dt_train_preds)
+dt_r2 = cor(trainf$Price, dt_train_preds)^2
+
+cat("Random Forest - MAE:", rf_mae, "R²:", rf_r2, "\n")
+cat("Decision Tree - MAE:", dt_mae, "R²:", dt_r2, "\n")
+
+# Predictions on test data
+
+rf_test_preds = predict(rf_model, newdata = testf)
+write.csv(rf_test_preds, file = "rf_submission.csv", row.names = FALSE)
+
+dt_test_preds = predict(dt_model, newdata = testf)
+write.csv(dt_test_preds, file = "dt_submission.csv", row.names = FALSE)
