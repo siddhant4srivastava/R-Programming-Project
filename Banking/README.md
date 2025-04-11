@@ -10,7 +10,7 @@ The bank has been facing customer dissatisfaction due to non-targeted marketing 
 
 ---
 
-## 📁 Dataset
+## Dataset
 
 The dataset includes customer and campaign-related attributes:
 - **Features**: Age, Job, Marital Status, Education, Contact Type, Duration, Pdays, Campaign History, etc.
